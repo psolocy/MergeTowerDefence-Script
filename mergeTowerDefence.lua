@@ -1,0 +1,153 @@
+local player = game.Players.LocalPlayer
+local character = player.Character or player.CharacterAdded:Wait()
+local humanoidRootPart = character:WaitForChild("HumanoidRootPart")
+
+local ENDER_PEARL_SOUND_ID = "rbxassetid://YOUR_ASSET_ID_HERE"
+
+-- GUI setup
+local screenGui = Instance.new("ScreenGui", player:WaitForChild("PlayerGui"))
+screenGui.Name = "MoneyTPGui"
+screenGui.ResetOnSpawn = false
+
+local mainFrame = Instance.new("Frame", screenGui)
+mainFrame.Size = UDim2.new(0, 200, 0, 175)
+mainFrame.Position = UDim2.new(0.1, 0, 0.1, 0)
+mainFrame.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
+mainFrame.BorderSizePixel = 0
+mainFrame.Active = true
+mainFrame.Draggable = true
+
+local topBar = Instance.new("TextLabel", mainFrame)
+topBar.Size = UDim2.new(1, 0, 0, 25)
+topBar.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+topBar.Text = "Money TP"
+topBar.TextColor3 = Color3.new(1, 1, 1)
+topBar.Font = Enum.Font.SourceSansBold
+topBar.TextSize = 18
+
+-- Teleport Button
+local toggleButton = Instance.new("TextButton", mainFrame)
+toggleButton.Size = UDim2.new(0.8, 0, 0, 35)
+toggleButton.Position = UDim2.new(0.1, 0, 0.35, 0)
+toggleButton.BackgroundColor3 = Color3.fromRGB(90, 90, 90)
+toggleButton.Text = "Start Teleport"
+toggleButton.TextColor3 = Color3.new(1, 1, 1)
+toggleButton.Font = Enum.Font.SourceSansBold
+toggleButton.TextSize = 16
+toggleButton.AutoButtonColor = true
+
+-- Rapidfire Button
+local rapidfireButton = Instance.new("TextButton", mainFrame)
+rapidfireButton.Size = UDim2.new(0.8, 0, 0, 35)
+rapidfireButton.Position = UDim2.new(0.1, 0, 0.7, 0)
+rapidfireButton.BackgroundColor3 = Color3.fromRGB(50, 120, 50)
+rapidfireButton.Text = "Enable Rapidfire"
+rapidfireButton.TextColor3 = Color3.new(1, 1, 1)
+rapidfireButton.Font = Enum.Font.SourceSansBold
+rapidfireButton.TextSize = 16
+rapidfireButton.AutoButtonColor = true
+
+-- Label Under Rapidfire Button
+local infoLabel = Instance.new("TextLabel", mainFrame)
+infoLabel.Size = UDim2.new(0.8, 0, 0, 25)
+infoLabel.Position = UDim2.new(0.1, 0, 0.85, 0)
+infoLabel.BackgroundTransparency = 1
+infoLabel.Text = "MUST HAVE GUNS BEFORE ENABLING!"
+infoLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+infoLabel.Font = Enum.Font.SourceSans
+infoLabel.TextSize = 14
+infoLabel.TextWrapped = true
+
+-- Sound setup
+local tpSound = Instance.new("Sound")
+tpSound.SoundId = ENDER_PEARL_SOUND_ID
+tpSound.Volume = 1
+tpSound.Name = "TeleportSound"
+tpSound.Parent = humanoidRootPart
+
+-- Update reference to HumanoidRootPart on spawn
+local function updateCharacter()
+	local character = player.Character or player.CharacterAdded:Wait()
+	humanoidRootPart = character:WaitForChild("HumanoidRootPart")
+end
+
+-- First-time setup
+updateCharacter()
+
+-- Update on every respawn
+player.CharacterAdded:Connect(updateCharacter)
+
+-- Teleport logic
+local running = false
+local teleportedParts = {}
+
+local function teleportToMoney()
+	teleportedParts = {}
+
+	while running do
+		for _, part in ipairs(workspace:GetDescendants()) do
+			if part:IsA("BasePart") and part.Name == "Money" and not teleportedParts[part] then
+				humanoidRootPart.CFrame = part.CFrame + Vector3.new(0, 5, 0)
+				tpSound:Play()
+				teleportedParts[part] = true
+				for i = 1, 5 do
+					if not running then break end
+					task.wait(0.05)
+				end
+			end
+			if not running then break end
+		end
+		task.wait(1)
+	end
+
+	toggleButton.Text = "Start Teleport"
+end
+
+-- Teleport toggle
+toggleButton.MouseButton1Click:Connect(function()
+	if running then
+		running = false
+		toggleButton.Text = "Start Teleport"
+	else
+		running = true
+		toggleButton.Text = "Stop Teleport"
+		task.spawn(teleportToMoney)
+	end
+end)
+
+-- Rapidfire logic
+local function enableRapidfire()
+	local backpack = player:FindFirstChild("Backpack")
+	if not backpack then
+		warn("Backpack not found.")
+		return
+	end
+
+	local weapons = {"AK", "Pistol", "SMG", "Frozen Pistol", "M16", "M4"}
+
+	for _, weaponName in ipairs(weapons) do
+		local weapon = backpack:FindFirstChild(weaponName)
+		if weapon then
+			local config = weapon:FindFirstChild("Configuration")
+			if config then
+				local fireRate = config:FindFirstChild("Firerate")
+				local reloadTime = config:FindFirstChild("ReloadTime")
+
+				if fireRate and fireRate:IsA("NumberValue") then
+					fireRate.Value = 0.01
+				end
+
+				if reloadTime and reloadTime:IsA("NumberValue") then
+					reloadTime.Value = 0
+				end
+			else
+				warn("Configuration not found in " .. weaponName)
+			end
+		else
+			warn(weaponName .. " not found in backpack.")
+		end
+	end
+end
+
+-- Rapidfire button click
+rapidfireButton.MouseButton1Click:Connect(enableRapidfire)
